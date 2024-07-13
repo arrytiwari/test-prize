@@ -1,6 +1,5 @@
 import FetchPrize from "@/components/prize/fetchprize";
 import { Group, Button,Text, Loader } from "@mantine/core";
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 
