@@ -33,6 +33,7 @@ export default function Header() {
                     About
                   </Text>
                 </Link>
+                
               </Menu.Item>
               <Menu.Item>
                 <Link href="/prize/explore" className="flex items-center">

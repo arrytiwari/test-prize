@@ -118,12 +118,10 @@ export default function ExploreCard({
         </p>
 
         <Button
-          color="primary"
-          component="a"
           fullWidth
           mt="md"
           radius="md"
-          href={`/prize/${slug}`}
+          // href={`/prize/${slug}`}
         >
           Details
         </Button>
