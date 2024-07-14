@@ -1,32 +1,29 @@
-// /* eslint-disable no-nested-ternary */
-// /* eslint-disable @typescript-eslint/no-unsafe-argument */
-// /* eslint-disable @typescript-eslint/no-explicit-any */
-// 'use client';
-// import useAppUser from '@/components/hooks/useAppUser';
-// import type { PrizeWithBlockchainData, SubmissionWithBlockchainData } from '@/lib/api';
-// import { calculateDeadline, usdcSignType } from '@/lib/utils';
+/* eslint-disable no-nested-ternary */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+'use client';
 
-// import { TransactionToast } from '@/components/custom/transaction-toast';
-// import { backendApi } from '@/lib/backend';
-// import { USDC } from '@/lib/constants';
-// import {
-//   Badge,
-//   Button,
-//   Center,
-//   Group,
-//   NumberInput,
-//   Stack,
-//   Text,
-//   Title,
-// } from '@mantine/core';
+
+
+import {
+    ActionIcon,
+  Badge,
+  Button,
+  Center,
+  Group,
+  NumberInput,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 // import { readContract } from '@wagmi/core';
-// import Image from 'next/image';
-// import { useParams, useRouter } from 'next/navigation';
-// import { useEffect, useState } from 'react';
-// import { toast } from 'sonner';
-// import revalidate from 'utils/revalidate';
-// import { hashTypedData, hexToSignature } from 'viem';
-// import { useWalletClient } from 'wagmi';
+import Image from 'next/image';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+import { hashTypedData, hexToSignature, parseEther } from 'viem';
+import { useAccount, useBalance, useSendTransaction, useSimulateContract, useWalletClient } from 'wagmi';
 // import ChangeSubmission from './buttons/changeSubmission';
 // import ChangeVotingTime from './buttons/changeVotingTime';
 // import EndDispute from './buttons/endDispute';
@@ -38,6 +35,94 @@
 // import PrizePageTabs from './prizepagetabs';
 // import RefundCard from './refundCard';
 // import Submissions from './submissions';
+import { useDebouncedValue } from '@mantine/hooks';
+import { IconRefresh } from '@tabler/icons-react';
+import { sendTransaction } from 'viem/actions';
+import { config } from '@/utils/config';
+import { Database } from '@/utils/database.types';
+import PrizePageTabs from './prizepagetabs';
+import { waitForTransactionReceipt } from 'wagmi/actions';
+
+
+function FundCard({ contractAddress }: { contractAddress: string }) {
+    const { address } = useAccount();
+    const [value, setValue] = useState('');
+    const [debounced] = useDebouncedValue(value, 500);
+  
+    const { data: balance, isLoading, refetch } = useBalance({ address });
+  
+   
+    const [sendLoading, setSendLoading] = useState(false);
+
+    const { sendTransactionAsync } = useSendTransaction()
+  
+    // const { isLoading: sendLoading, sendTransaction } = useSendTransaction({
+    //   ...config,
+    //   async onSuccess(data) {
+    //     toast.success(`Transaction Sent with Hash ${data?.hash}`, {
+    //       duration: 6000,
+    //     });
+    //     await refetch();
+    //   },
+    // });
+  
+    return (
+      <Stack my={'md'}>
+        <NumberInput
+          label={
+            isLoading
+              ? 'Loading.....'
+              : `Enter Value To Donate (Max: ${balance?.formatted} ${balance?.symbol} )`
+          }
+          placeholder="Custom right section"
+          mt="md"
+          rightSection={
+            <ActionIcon>
+              <IconRefresh onClick={() => refetch({})} />
+            </ActionIcon>
+          }
+          
+          allowDecimal
+          defaultValue={0}
+          allowNegative={false}
+          value={value}
+          onChange={(v) => {
+            if (!v) {
+              console.log({ v }, 'inner v');
+              setValue('0');
+            }
+            setValue(v.toString());
+          }}
+        />
+  
+        <Button
+          disabled={!value}
+          loading={sendLoading}
+          onClick={async () => {
+            await refetch();
+  
+            
+            setSendLoading(true);
+  
+            const hash = await sendTransactionAsync({
+              to: contractAddress as `0x${string}`,
+              value: debounced ? parseEther(debounced) : undefined,
+              
+            });
+
+           
+            
+            toast.success(`Transaction Sent with Hash ${hash}`, {
+              duration: 6000,
+            });
+            setSendLoading(false);
+          }}
+        >
+          Donate
+        </Button>
+      </Stack>
+    );
+  }
 
 // function FundUsdcCard({
 //   contractAddress,
@@ -257,162 +342,115 @@
 //   );
 // }
 
-// export default function PrizePageComponent({
-//   prize,
-//   submissions,
-// }: {
-//   prize: PrizeWithBlockchainData;
-//   submissions: SubmissionWithBlockchainData[];
-// }) {
-//   const { appUser } = useAppUser();
-//   const deadlineString = calculateDeadline(
-//     new Date(),
-//     new Date(prize.submission_time_blockchain * 1000),
-//   );
-//   const params = useParams();
-//   useEffect(() => {
-//     if (window.location.hash.includes('success')) {
-//       fetch('https://fxk2d1d3nf.execute-api.us-west-1.amazonaws.com/reserve/hash').then(
-//         (res) => {
-//           res.json().then((data) => {
-//             toast.success(
-//               <TransactionToast hash={data.hash} title="Transaction Successful" />,
-//               {
-//                 duration: 6000,
-//               },
-//             );
-//           });
-//         },
-//       );
-//     }
-//   }, [params]);
+export default function PrizePageComponent({
+  prize,
+ 
+}: {
+  prize: Exclude<Database["public"]["Tables"]["prizes"]["Row"],'admins'> & {balance: number};
+}) {
+  const { address} = useAccount()
+ 
 
-//   return (
-//     <div className="max-w-screen-lg px-6 py-6 shadow-md rounded-md min-h-screen my-6 relative">
-//       <Group justify="space-between" my="lg">
-//         <Title order={2}>{prize.title}</Title>
-//         {deadlineString === 'Time is up!' && prize.distributed === true ? (
-//           <Badge size="lg" color="green">
-//             Won
-//           </Badge>
-//         ) : // eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-//         prize.refunded ? (
-//           <Badge size="lg" color="yellow">
-//             Refunded
-//           </Badge>
-//         ) : null}
-//       </Group>
-//       <Image
-//         className="aspect-video object-cover sm:max-h-[350px] max-h-[200px] md:max-h-fit max-w-full  rounded-md"
-//         src={
-//           prize.images[0] ||
-//           'https://placehold.jp/24/3d4070/ffffff/1280x720.png?text=No%20Image'
-//         }
-//         width={1280}
-//         height={768}
-//         alt="prize info tumbnail"
-//         // imageProps={{ onLoad: () => URL.revokeObjectURL(imageUrl) }}
-//       />
-//       <Center my="xl">
-//         <PrizePageTabs
-//           avatar={prize.user.avatar}
-//           email={prize.user.email}
-//           name={prize.user.name}
-//           description={prize.description}
-//           contractAddress={prize.contract_address}
-//           totalFunds={prize.balance}
-//           submissionDeadline={
-//             prize.submission_time_blockchain !== 0
-//               ? new Date(prize.submission_time_blockchain * 1000)
-//               : undefined
-//           }
-//           votingDeadline={
-//             prize.voting_time_blockchain !== 0
-//               ? new Date(prize.voting_time_blockchain * 1000)
-//               : undefined
-//           }
-//           username=""
-//         />
-//       </Center>
-//       {prize.is_active_blockchain && (
-//         <FundUsdcCard
-//           contractAddress={prize.contract_address}
-//           prizeId={prize.id}
-//           title={prize.title}
-//           cancelUrl={window.location.href}
-//           imageUrl={prize.images[0] || ''}
-//           successUrl={`${window.location.href}#success`}
-//           slug={prize.slug}
-//         />
-//       )}
+  return (
+    <div className="max-w-screen-lg px-6 py-6 shadow-md rounded-md min-h-screen my-6 relative">
+      <Group justify="space-between" my="lg">
+        <Title order={2}>{prize.title}</Title> 
+      </Group>
+      <Image
+        className="aspect-video object-cover sm:max-h-[350px] max-h-[200px] md:max-h-fit max-w-full  rounded-md"
+        src={
+          prize.image ||
+          'https://placehold.jp/24/3d4070/ffffff/1280x720.png?text=No%20Image'
+        }
+        width={1280}
+        height={768}
+        alt="prize info tumbnail"
+        // imageProps={{ onLoad: () => URL.revokeObjectURL(imageUrl) }}
+      />
+      <Center my="xl">
+        <PrizePageTabs
+          
+        
+          name={`${prize.proposer_address?.slice(0, 6)}...${prize.proposer_address?.slice(-4)}`}
+          description={prize.description ?? ''}
+          contractAddress={prize.contract_address ?? ''}
+          totalFunds={prize.balance ?? 0}
+         
+          username={`${prize.proposer_address?.slice(0, 6)}...${prize.proposer_address?.slice(-4)}`}
+        />
+      </Center>
+      
+        <FundCard contractAddress={prize.contract_address ?? ''} />
+         
+    
 
-//       {appUser
-//         ? (appUser.username === prize.user.username || appUser.isAdmin) &&
-//           prize.submission_time_blockchain === 0 && (
-//             <StartSubmission
-//               contractAddress={prize.contract_address}
-//               submissionTime={prize.submissionTime}
-//               slug={prize.slug}
-//             />
-//           )
-//         : null}
-//       {appUser
-//         ? (appUser.username === prize.user.username || appUser.isAdmin) &&
-//           prize.submission_time_blockchain === 0 &&
-//           prize.voting_time_blockchain === 0 && (
-//             <StartVoting
-//               contractAddress={prize.contract_address}
-//               votingTime={prize.votingTime}
-//               slug={prize.slug}
-//             />
-//           )
-//         : null}
-//       {appUser?.isAdmin &&
-//       !(deadlineString === 'Time is up!') &&
-//       prize.submission_time_blockchain > 0 ? (
-//         <EndSubmission contractAddress={prize.contract_address} slug={prize.slug} />
-//       ) : null}
+      {/* {appUser
+        ? (appUser.username === prize.user.username || appUser.isAdmin) &&
+          prize.submission_time_blockchain === 0 && (
+            <StartSubmission
+              contractAddress={prize.contract_address}
+              submissionTime={prize.submissionTime}
+              slug={prize.slug}
+            />
+          )
+        : null} */}
+      {/* {appUser
+        ? (appUser.username === prize.user.username || appUser.isAdmin) &&
+          prize.submission_time_blockchain === 0 &&
+          prize.voting_time_blockchain === 0 && (
+            <StartVoting
+              contractAddress={prize.contract_address}
+              votingTime={prize.votingTime}
+              slug={prize.slug}
+            />
+          )
+        : null} */}
+      {/* {appUser?.isAdmin &&
+      !(deadlineString === 'Time is up!') &&
+      prize.submission_time_blockchain > 0 ? (
+        <EndSubmission contractAddress={prize.contract_address} slug={prize.slug} />
+      ) : null} */}
 
-//       {appUser?.isAdmin && prize.submission_time_blockchain ? (
-//         <ChangeSubmission
-//           contractAddress={prize.contract_address}
-//           submissionTime={prize.submission_time_blockchain}
-//           slug={prize.slug}
-//         />
-//       ) : null}
-//       {appUser?.isAdmin && prize.voting_time_blockchain > 0 ? (
-//         <EndVoting contractAddress={prize.contract_address} slug={prize.slug} />
-//       ) : null}
-//       {appUser?.isAdmin && prize.voting_time_blockchain > 0 ? (
-//         <ChangeVotingTime
-//           contractAddress={prize.contract_address}
-//           votingTime={prize.voting_time_blockchain}
-//           slug={prize.slug}
-//         />
-//       ) : null}
+      {/* {appUser?.isAdmin && prize.submission_time_blockchain ? (
+        <ChangeSubmission
+          contractAddress={prize.contract_address}
+          submissionTime={prize.submission_time_blockchain}
+          slug={prize.slug}
+        />
+      ) : null} */}
+      {/* {appUser?.isAdmin && prize.voting_time_blockchain > 0 ? (
+        <EndVoting contractAddress={prize.contract_address} slug={prize.slug} />
+      ) : null} */}
+      {/* {appUser?.isAdmin && prize.voting_time_blockchain > 0 ? (
+        <ChangeVotingTime
+          contractAddress={prize.contract_address}
+          votingTime={prize.voting_time_blockchain}
+          slug={prize.slug}
+        />
+      ) : null} */}
 
-//       <Submissions
-//         allowVoting={prize.voting_time_blockchain > 0}
-//         allowSubmission={prize.submission_time_blockchain > 0}
-//         submissions={submissions}
-//         contractAddress={prize.contract_address}
-//       />
+      {/* <Submissions
+        allowVoting={prize.voting_time_blockchain > 0}
+        allowSubmission={prize.submission_time_blockchain > 0}
+        submissions={submissions}
+        contractAddress={prize.contract_address}
+      /> */}
 
-//       {appUser?.isAdmin && prize.dispute_period_time_blockchain > 0 ? (
-//         <>
-//           <EndDispute contractAddress={prize.contract_address} />
-//           <EndDisputeEarly contractAddress={prize.contract_address} />
-//         </>
-//       ) : null}
+      {/* {appUser?.isAdmin && prize.dispute_period_time_blockchain > 0 ? (
+        <>
+          <EndDispute contractAddress={prize.contract_address} />
+          <EndDisputeEarly contractAddress={prize.contract_address} />
+        </>
+      ) : null} */}
 
-//       {prize.voting_time_blockchain > 0 ? (
-//         <RefundCard
-//           allowVoting={prize.voting_time_blockchain > 0}
-//           contractAddress={prize.contract_address}
-//           showVote
-//         />
-//       ) : null}
-//       {/* <CommentSection /> */}
-//     </div>
-//   );
-// }
+      {/* {prize.voting_time_blockchain > 0 ? (
+        <RefundCard
+          allowVoting={prize.voting_time_blockchain > 0}
+          contractAddress={prize.contract_address}
+          showVote
+        />
+      ) : null}
+      <CommentSection /> */}
+    </div>
+  );
+}

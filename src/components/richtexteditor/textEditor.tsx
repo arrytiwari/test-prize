@@ -10,7 +10,6 @@ import { Underline } from '@tiptap/extension-underline';
 import type { AnyExtension } from '@tiptap/react';
 import { useEditor } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
-import { PrizeCreationTemplate } from '../Prize/prizepage/defaultcontent';
 // import ReactQuill from 'react-quill';
 import dynamic from 'next/dynamic';
 import { useMemo } from 'react';
@@ -126,17 +125,7 @@ export function TextEditor({
               ],
         }}
       />
-      {canSetRichtext ? (
-        <Button
-          className="my-2"
-          color="dark.4"
-          onClick={() => {
-            editor?.commands.insertContent(PrizeCreationTemplate);
-          }}
-        >
-          Use Template for Prize Description
-        </Button>
-      ) : null}
+     
     </>
   );
 }

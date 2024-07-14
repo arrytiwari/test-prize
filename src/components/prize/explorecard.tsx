@@ -1,6 +1,7 @@
 'use client'
 import { Card, Badge, Group, Flex, Button, CopyButton, Tooltip, ActionIcon,Image,Text } from '@mantine/core'
 import { IconCheck, IconCopy } from '@tabler/icons-react'
+import { useRouter } from 'next/navigation';
 import { title } from 'process'
 interface ExploreCardProps {
     distributed: boolean;
@@ -16,8 +17,6 @@ interface ExploreCardProps {
     startingTimeBlockchain: number;
     slug: string;
     contestants: number;
-    startSubmissionDate: Date;
-    startVotingDate: Date;
   }
 //   const submissionEndDate = new Date(startingTimeBlockchain * 1000);
 //   const deadlineString = calculateDeadline(
@@ -35,12 +34,11 @@ export default function ExploreCard({
     id,
     skills,
     distributed,
-    startingTimeBlockchain,
+
     slug,
-    submissionMinutes,
-    startSubmissionDate,
     contestants,
   }: ExploreCardProps) {
+    const router = useRouter()
   return (
     <Card
     padding="lg"
@@ -101,7 +99,7 @@ export default function ExploreCard({
         {/*  >{htmlToPlainText(description)}</p> */}
         <Flex gap="sm">{skills}</Flex>
         <Text fw="bold" size="xl">
-          {usdAmount} USD
+          {usdAmount} tCORE
         </Text>
         {/* <Text fw="bold" className="flex">
           Submission Deadline :{' '}
@@ -121,7 +119,10 @@ export default function ExploreCard({
           fullWidth
           mt="md"
           radius="md"
-          // href={`/prize/${slug}`}
+          onClick={()=>{
+            router.push(`/prize/${slug}`)
+          }}
+          
         >
           Details
         </Button>

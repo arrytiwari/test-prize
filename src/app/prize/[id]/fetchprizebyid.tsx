@@ -1,86 +1,29 @@
 
-// import { Api } from '@/lib/api';
-// import type { Metadata } from 'next';
-// import { redirect } from 'next/navigation';
 
-// import PrizePageComponent from "@/components/prize/prizepage";
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
-// export const dynamic = 'auto';
-// export const dynamicParams = true;
-// export const revalidate = 5;
-// export const fetchCache = 'auto';
-// export const preferredRegion = 'auto';
-// export const maxDuration = 5;
+import PrizePageComponent from "@/components/prize/prizepage";
+import { supabase } from '@/utils/helpers';
+import { getBalance } from 'wagmi/actions';
+import { config } from '@/utils/config';
 
-// export async function generateMetadata({
-//   params,
-// }: {
-//   params: { slug: string };
-// }): Promise<Metadata> {
-//   const prize = (
-//     await new Api().prizes.prizesDetail(params.slug, {
-//       next: {
-//         revalidate: 0,
-//       },
-//     })
-//   ).data;
 
-//   return {
-//     title: prize.title,
-//     description: prize.description,
-//     metadataBase: new URL('https://viaprize.org/'),
-//     openGraph: {
-//       title: prize.title,
-//       description: prize.description,
-//       url: prize.slug,
-//       images: {
-//         width: 1200,
-//         height: 630,
-//         alt: prize.title,
-//         url: prize.images[0],
-//       },
-//     },
-//     twitter: {
-//       card: 'summary_large_image',
-//       title: prize.title,
-//       description: prize.description.slice(0, 300),
-//       images: prize.images,
-//     },
-//   };
-// }
 
-// export default async function FetchPrizeByID({ params }: { params: { id: number } }) {
-//   if (params.slug.includes('-')) {
-//     const slug = (await new Api().prizes.slugDetail(params.slug)).data;
-//     if (slug) {
-//       return redirect(`/prize/${slug.slug}`);
-//     }
-//   }
+export default async function FetchPrizeByID({ params }: { params: { id: number } }) {
 
-//   const prize = (
-//     await new Api().prizes.prizesDetail(params.id, {
-//       next: {
-//         revalidate: 0,
-//         tags: [params.id],
-//       },
-//     })
-//   ).data;
 
-//   const submissions = (
-//     await new Api().prizes.submissionDetail(
-//       params.slug,
-//       {
-//         limit: 5,
-//         page: 1,
-//       },
-//       {
-//         next: {
-//           revalidate: 0,
-//           tags: [params.id],
-//         },
-//       },
-//     )
-//   ).data.data;
+  const prize = await supabase.from('prizes').select('*').eq('id', params.id).single();
+  if(prize.error){
+    redirect('/404');
+  }
+  const balance = await getBalance(config,{
+    address:prize.data?.contract_address   as `0x${string}`,
+  })
 
-//   return <PrizePageComponent prize={'uswdui'} submissions={['sjhvdjh','wiugiudsgw']}  />;
-// }
+  return <PrizePageComponent prize={{
+    ...prize.data,
+    admins: prize.data?.admins ?? [] as string[],
+    balance: (parseFloat(balance.value.toString()) / 1000000000000000000) as number
+  }}  />;
+}
