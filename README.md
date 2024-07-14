@@ -15,3 +15,4 @@ Funders:
 Contestants:
 -Win prizes!
 
+(Note: Deployment of prize,authentication and donation are built on Core DAO)
